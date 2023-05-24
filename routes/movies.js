@@ -4,10 +4,12 @@ var router = express.Router();
 const authorization = require("../middleware/authorization");
 
 router.get("/search", function (req, res) {
-  const searchTerm = req.query.title;
+  const searchTitle = req.query.title;
+  const searchYear = req.query.year;
+//   TODO Add page search somehow using knex paginate
+  const searchPage = req.query.page;
 
-  let query = 
-  req.db
+  let query = req.db
     .from("basics")
     .select(
       "primaryTitle",
@@ -19,11 +21,16 @@ router.get("/search", function (req, res) {
       "rated"
     );
 
-    if (searchTerm) {
-        query = query.where("primaryTitle", "like", `%${searchTerm}%`);
-    }
-    
-    query
+  if (searchTitle) {
+    query = query.where("primaryTitle", "like", `%${searchTitle}%`);
+  }
+
+  if (searchYear) {
+    query = query.where("year", "=", searchYear);
+  }
+
+  query
+  .limit(100) // Limit the results to 100 max
     .then((rows) => {
       res.json({ error: false, message: "success", basics: rows });
     })
