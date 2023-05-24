@@ -3,8 +3,8 @@ var router = express.Router();
 
 const authorization = require("../middleware/authorization");
 
-router.get("/search/:primaryTitle", function (req, res) {
-  const searchTerm = req.params.primaryTitle;
+router.get("/search", function (req, res) {
+  const searchTerm = req.query.title;
   req.db
     .from("basics")
     .select(
