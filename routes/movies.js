@@ -5,6 +5,8 @@ const authorization = require("../middleware/authorization");
 
 router.get("/search", function (req, res) {
   const searchTerm = req.query.title;
+
+  let query = 
   req.db
     .from("basics")
     .select(
@@ -15,8 +17,13 @@ router.get("/search", function (req, res) {
       "rottentomatoesRating",
       "metacriticRating",
       "rated"
-    )
-    .where("primaryTitle", "like", `%${searchTerm}%`)
+    );
+
+    if (searchTerm) {
+        query = query.where("primaryTitle", "like", `%${searchTerm}%`);
+    }
+    
+    query
     .then((rows) => {
       res.json({ error: false, message: "success", basics: rows });
     })
