@@ -38,7 +38,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Use Routes
 app.use("/movies", moviesRouter);
-app.use("/users", usersRouter);
+app.use("/user", usersRouter);
 // app.use("/people", peopleRouter);
 app.use('/docs', swaggerUI.serve, swaggerUI.setup(swaggerDocument));
 
