@@ -3,6 +3,7 @@ var router = express.Router();
 
 const authorization = require("../middleware/authorization");
 
+//   TODO Add error handling for invalid parameters
 router.get("/search", function (req, res) {
   const searchTitle = req.query.title;
   const searchYear = req.query.year;
@@ -12,13 +13,15 @@ router.get("/search", function (req, res) {
   let query = req.db
     .from("basics")
     .select(
-      "primaryTitle",
+      "primaryTitle AS title",
       "year",
-      "tconst",
-      "imdbRating",
-      "rottentomatoesRating",
-      "metacriticRating",
-      "rated"
+      "tconst as imdbID",
+      req.db.raw("CAST(imdbRating AS UNSIGNED) AS imdbRating"),
+      req.db.raw(
+        "CAST(rottentomatoesRating AS UNSIGNED) AS rottenTomatoesRating"
+      ),
+      req.db.raw("CAST(metacriticRating AS UNSIGNED) AS metacriticRating"),
+      "rated AS classification"
     );
 
   if (searchTitle) {
@@ -32,7 +35,7 @@ router.get("/search", function (req, res) {
   query
   .limit(100) // Limit the results to 100 max
     .then((rows) => {
-      res.json({ error: false, message: "success", basics: rows });
+      res.json({ data: rows });
     })
     .catch((err) => {
       console.log(err);
@@ -53,19 +56,40 @@ router.get("/knex", function (req, res) {
   res.json({ message: "Version Logged successfully" });
 });
 
-router.get("/api/city/:CountryCode", function (req, res) {
+// TODO Change format of movie data route
+router.get("/data/:imdbID", function (req, res) {
+  const imdbID = req.params.imdbID;
+  let query =
   req.db
-    .from("City")
-    .select("*")
-    .where("CountryCode", "=", req.params.CountryCode)
+    .from("basics")
+    .select(
+      "basics.primaryTitle AS title",
+      "basics.year",
+      "basics.runtimeMinutes AS runtime",
+      "basics.genres",
+      "basics.country",
+      "principals.nconst",
+      "principals.id",
+      "principals.category",
+      "principals.name",
+      "principals.characters",
+      "ratings.source",
+      "ratings.value",
+      "ratings.id"
+    );
+    query
+    .join("principals", "basics.tconst", "=", "principals.tconst")
+    .join("ratings", "basics.tconst", "=", "ratings.tconst")
+    .where("basics.tconst", "=", imdbID)
     .then((rows) => {
-      res.json({ error: false, message: "Success", city: rows });
+      res.json({ error: false, message: "success", basics: rows });
     })
     .catch((err) => {
       console.log(err);
       res.json({ error: true, message: "Error in MySQL query" });
     });
 });
+
 
 router.post("/api/update", authorization, (req, res) => {
   if (!req.body.City || !req.body.CountryCode || !req.body.Pop) {
