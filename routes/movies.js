@@ -7,7 +7,7 @@ const authorization = require("../middleware/authorization");
 router.get("/search", function (req, res) {
   const searchTitle = req.query.title;
   const searchYear = req.query.year;
-//   TODO Add page search somehow using knex paginate
+  //   TODO Add page search somehow using knex paginate
   const searchPage = req.query.page;
 
   let query = req.db
@@ -16,11 +16,9 @@ router.get("/search", function (req, res) {
       "primaryTitle AS title",
       "year",
       "tconst as imdbID",
-      req.db.raw("CAST(imdbRating AS UNSIGNED) AS imdbRating"),
-      req.db.raw(
-        "CAST(rottentomatoesRating AS UNSIGNED) AS rottenTomatoesRating"
-      ),
-      req.db.raw("CAST(metacriticRating AS UNSIGNED) AS metacriticRating"),
+      "imdbRating",
+      "rottenTomatoesRating",
+      "metacriticRating",
       "rated AS classification"
     );
 
@@ -33,7 +31,7 @@ router.get("/search", function (req, res) {
   }
 
   query
-  .limit(100) // Limit the results to 100 max
+    .limit(100) // Limit the results to 100 max
     .then((rows) => {
       res.json({ data: rows });
     })
@@ -59,8 +57,7 @@ router.get("/knex", function (req, res) {
 // TODO Change format of movie data route
 router.get("/data/:imdbID", function (req, res) {
   const imdbID = req.params.imdbID;
-  let query =
-  req.db
+  let movieQuery = req.db
     .from("basics")
     .select(
       "basics.primaryTitle AS title",
@@ -68,28 +65,64 @@ router.get("/data/:imdbID", function (req, res) {
       "basics.runtimeMinutes AS runtime",
       "basics.genres",
       "basics.country",
+      "basics.poster",
+      "basics.plot",
+      "basics.boxoffice"
+    );
+  let principalsQuery = req.db
+    .from("principals")
+    .select(
       "principals.nconst",
       "principals.id",
       "principals.category",
       "principals.name",
-      "principals.characters",
-      "ratings.source",
-      "ratings.value",
-      "ratings.id"
+      "principals.characters"
     );
-    query
-    .join("principals", "basics.tconst", "=", "principals.tconst")
-    .join("ratings", "basics.tconst", "=", "ratings.tconst")
+  let ratingsQuery = req.db
+    .from("ratings")
+    .select("ratings.source", "ratings.value");
+
+  movieQuery
     .where("basics.tconst", "=", imdbID)
     .then((rows) => {
-      res.json({ error: false, message: "success", basics: rows });
+      let movie = rows[0];
+      principalsQuery.where("principals.tconst", "=", imdbID).then((rows) => {
+        let principals = rows.map((row) => {
+          return {
+            id: row.nconst,
+            category: row.category,
+            name: row.name,
+            characters: row.characters == "" ? [] : JSON.parse(row.characters),
+          };
+        });
+        ratingsQuery.where("ratings.tconst", "=", imdbID).then((rows) => {
+          let ratings = rows.map((row) => {;
+            return {
+              source: row.source,
+              value: parseFloat(row.value),
+            };
+          });
+
+          res.json({
+            title: movie.title,
+            year: movie.year,
+            runtime: movie.runtime,
+            genres: movie.genres.split(","),
+            country: movie.country,
+            principals: principals,
+            ratings: ratings,
+            boxoffice: movie.boxoffice,
+            poster: movie.poster,
+            plot: movie.plot,
+          });
+        });
+      });
     })
     .catch((err) => {
       console.log(err);
       res.json({ error: true, message: "Error in MySQL query" });
     });
 });
-
 
 router.post("/api/update", authorization, (req, res) => {
   if (!req.body.City || !req.body.CountryCode || !req.body.Pop) {
