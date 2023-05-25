@@ -96,6 +96,15 @@ router.get("/data/:imdbID", function (req, res) {
   movieQuery
     .where("basics.tconst", "=", imdbID)
     .then((rows) => {
+      if (rows.length === 0) {
+        res
+          .status(404)
+          .json({
+            error: true,
+            message: "No record exists of a movie with this ID",
+          });
+        return;
+      }
       let movie = rows[0];
       principalsQuery.where("principals.tconst", "=", imdbID).then((rows) => {
         let principals = rows.map((row) => {
