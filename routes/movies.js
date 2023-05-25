@@ -33,7 +33,18 @@ router.get("/search", function (req, res) {
   query
     .limit(100) // Limit the results to 100 max
     .then((rows) => {
-      res.json({ data: rows });
+      const parsedRows = rows.map((row) => {
+        return {
+          title: row.title,
+          year: row.year,
+          imdbID: row.imdbID,
+          imdbRating: parseFloat(row.imdbRating),
+          rottenTomatoesRating: parseFloat(row.rottenTomatoesRating),
+          metacriticRating: parseFloat(row.metacriticRating),
+          classification: row.classification
+        }
+      })
+      res.json({ data: parsedRows });
     })
     .catch((err) => {
       console.log(err);
