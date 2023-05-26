@@ -16,16 +16,18 @@ router.post("/login", function (req, res, next) {
   const email = req.body.email;
   const password = req.body.password;
   const bearerExpiresIn = req.body.bearerExpiresInSeconds;
-  const refreshExpiresIn = req.body.refreshExpiresInSeconds;
 
   // Verify body
-  if (!email || !password || !bearerExpiresIn || !refreshExpiresIn) {
+  if (!email || !password) {
     res.status(400).json({
       error: true,
       message: "Request body incomplete - email and password needed",
     });
     return;
   }
+
+  // Set the default value for bearerExpiresIn
+  const defaultBearerExpiresIn = 600
   // Determine if user already exists in table
   const queryUsers = req.db
     .from("users")
@@ -46,18 +48,21 @@ router.post("/login", function (req, res, next) {
         throw new Error("Incorrect email or password");
       }
       // Create bearer and refresh tokens
-      const bearerExp = Math.floor(Date.now() / 1000 + bearerExpiresIn);
+      const bearerExp = Math.floor(Date.now() / 1000 + (bearerExpiresIn ? bearerExpiresIn : defaultBearerExpiresIn));
+      const refreshExpiresIn =  60 * 60 * 24; // 24 hours
       const refreshExp = Math.floor(Date.now() / 1000 + refreshExpiresIn);
       const bearerToken = jwt.sign({ email, exp: bearerExp }, JWT_SECRET);
       const refreshToken = jwt.sign(
         { email, exp: refreshExp },
         JWT_REFRESH_SECRET
       );
+      const expiresIn = bearerExpiresIn || defaultBearerExpiresIn; // Set the bearer tokens expiration time based on input other is set to the default of 600 seconds
+
       res.status(200).json({
         bearerToken: {
           token: bearerToken,
           token_type: "Bearer",
-          expires_in: 600,
+          expires_in: expiresIn,
         },
         refreshToken: {
           token: refreshToken,
@@ -108,7 +113,7 @@ router.post("/register", function (req, res, next) {
       return req.db.from("users").insert({ email, hash });
     })
     .then(() => {
-      res.status(201).json({ error: false, message: "User created" });
+      res.status(201).json({ message: "User created" });
     })
     .catch((e) => {
       res.status(500).json({ error: true, message: e.message });
@@ -135,7 +140,7 @@ router.post("/logout", function (req, res, next) {
     .update({ refresh_token: "" }) // Set the refresh token to an empty string
     .then((numUpdated) => {
       if (numUpdated === 0) {
-        res.json({ error: true, message: "JWT token has expired" });
+        res.status(401).json({ error: true, message: "JWT token has expired" });
       } else {
         res.status(200).json({
           error: false,
@@ -148,5 +153,63 @@ router.post("/logout", function (req, res, next) {
     });
 });
 
+router.post("/refresh", function (req, res, next) {
+  // Retrieve the refresh token from the req.body
+  const refreshToken = req.body.refreshToken;
+
+  // Verify if a refresh token is provided
+  if (!refreshToken) {
+    res.status(400).json({
+      error: true,
+      message: "Request body incomplete, refresh token required",
+    });
+    return;
+  }
+
+  // Verify the refresh token and generate a new bearer token
+  jwt.verify(refreshToken, JWT_REFRESH_SECRET, (error, decoded) => {
+    if (error) {
+      res.status(401).json({
+        error: true,
+        message: "JWT token has expired",
+      });
+      return;
+    }
+
+    const email = decoded.email;
+
+    // Generate a new bearer and refresh token
+    const bearerExp = Math.floor(Date.now() / 1000 + 600);
+    const refreshExp = Math.floor(Date.now() / 1000 + 86400);
+    const newBearerToken = jwt.sign({ email, exp: bearerExp }, JWT_SECRET);
+    const newRefreshToken = jwt.sign(
+      { email, exp: refreshExp },
+      JWT_REFRESH_SECRET
+    );
+
+    // Update the refresh token in the database
+    req.db
+      .from("users")
+      .where("refresh_token", refreshToken)
+      .update({ refresh_token: newRefreshToken })
+      .then(() => {
+        res.status(200).json({
+          bearerToken: {
+            token: newBearerToken,
+            token_type: "Bearer",
+            expires_in: 600,
+          },
+          refreshToken: {
+            token: newRefreshToken,
+            token_type: "Refresh",
+            expires_in: 86400,
+          },
+        });
+      })
+      .catch((error) => {
+        res.status(500).json({ error: true, message: error.message });
+      });
+  });
+});
 
 module.exports = router;
