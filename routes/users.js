@@ -12,7 +12,6 @@ router.get("/", function (req, res, next) {
 });
 
 router.post("/login", function (req, res, next) {
-
   // Retrieve email and password from req.body
   const email = req.body.email;
   const password = req.body.password;
@@ -47,10 +46,13 @@ router.post("/login", function (req, res, next) {
         throw new Error("Incorrect email or password");
       }
       // Create bearer and refresh tokens
-      const bearerExp = Math.floor(Date.now() / 1000 + bearerExpiresIn); 
+      const bearerExp = Math.floor(Date.now() / 1000 + bearerExpiresIn);
       const refreshExp = Math.floor(Date.now() / 1000 + refreshExpiresIn);
-      const bearerToken = jwt.sign({ email, exp: bearerExp }, process.env.JWT_SECRET);
-      const refreshToken = jwt.sign({ email, exp: refreshExp}, process.env.JWT_REFRESH_SECRET)
+      const bearerToken = jwt.sign({ email, exp: bearerExp }, JWT_SECRET);
+      const refreshToken = jwt.sign(
+        { email, exp: refreshExp },
+        JWT_REFRESH_SECRET
+      );
       res.status(200).json({
         bearerToken: {
           token: bearerToken,
@@ -64,13 +66,13 @@ router.post("/login", function (req, res, next) {
         },
       });
       // Store refresh token into database
-      return queryUsers.update({refresh_token: refreshToken})
-      
-    }).catch((error) => {
+      return queryUsers.update({ refresh_token: refreshToken });
+    })
+    .catch((error) => {
       res.status(500).json({ error: true, message: error.message });
       return;
     });
-  });
+});
 // 2.1.1 If passwords match, return JWT
 
 // 2.2 If user does not exist, return error response
@@ -106,10 +108,45 @@ router.post("/register", function (req, res, next) {
       return req.db.from("users").insert({ email, hash });
     })
     .then(() => {
-      res.status(201).json({ success: true, message: "User created" });
+      res.status(201).json({ error: false, message: "User created" });
     })
     .catch((e) => {
-      res.status(500).json({ success: false, message: e.message });
+      res.status(500).json({ error: true, message: e.message });
     });
 });
+
+router.post("/logout", function (req, res, next) {
+  // Retrieve the refresh token from the req.body
+  const refreshToken = req.body.refreshToken;
+
+  // Verify if a refresh token is provided
+  if (!refreshToken) {
+    res.status(400).json({
+      error: true,
+      message: "Request body incomplete, refresh token required",
+    });
+    return;
+  }
+
+  // Delete the refresh token from the database
+  req.db
+    .from("users")
+    .where("refresh_token", refreshToken)
+    .update({ refresh_token: "" }) // Set the refresh token to an empty string
+    .then((numUpdated) => {
+      if (numUpdated === 0) {
+        res.json({ error: true, message: "JWT token has expired" });
+      } else {
+        res.status(200).json({
+          error: false,
+          message: "Token successfully invalidated",
+        });
+      }
+    })
+    .catch((e) => {
+      res.status(500).json({ error: true, message: e.message });
+    });
+});
+
+
 module.exports = router;
