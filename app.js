@@ -17,6 +17,7 @@ require("dotenv").config();
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
 var moviesRouter = require('./routes/movies');
+var peopleRouter = require('./routes/people');
 
 var app = express();
 
@@ -39,7 +40,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Use Routes
 app.use("/movies", moviesRouter);
 app.use("/user", usersRouter);
-// app.use("/people", peopleRouter);
+app.use("/people", peopleRouter);
 app.use('/docs', swaggerUI.serve, swaggerUI.setup(swaggerDocument));
 
 // catch 404 and forward to error handler
