@@ -3,12 +3,14 @@ var router = express.Router();
 
 const authorization = require("../middleware/authorization");
 
+const { attachPaginate } = require("knex-paginate");
+attachPaginate();
+
 //   TODO Add error handling for invalid parameters
 router.get("/search", function (req, res) {
   const searchTitle = req.query.title;
   const searchYear = req.query.year;
-  //   TODO Add page search somehow using knex paginate
-  const searchPage = req.query.page;
+  const page = req.query.page;
 
   let query = req.db
     .from("basics")
@@ -31,9 +33,9 @@ router.get("/search", function (req, res) {
   }
 
   query
-    .limit(100) // Limit the results to 100 max
-    .then((rows) => {
-      const parsedRows = rows.map((row) => {
+    .paginate({ perPage: 100, currentPage: page, isLengthAware: true })
+    .then((result) => {
+      const parsedRows = result.data.map((row) => {
         return {
           title: row.title,
           year: row.year,
@@ -41,16 +43,24 @@ router.get("/search", function (req, res) {
           imdbRating: parseFloat(row.imdbRating),
           rottenTomatoesRating: parseFloat(row.rottenTomatoesRating),
           metacriticRating: parseFloat(row.metacriticRating),
-          classification: row.classification
-        }
-      })
-      res.json({ data: parsedRows });
+          classification: row.classification,
+        };
+      });
+
+      // Convert currentPage and nextPage to integers
+      const pagination = {
+        ...result.pagination,
+        currentPage: parseInt(result.pagination.currentPage),
+        nextPage: parseInt(result.pagination.nextPage)
+      }
+      res.json({ data: parsedRows, pagination: pagination });
     })
     .catch((err) => {
       console.log(err);
       res.json({ error: true, message: "Error in MySQL query" });
     });
 });
+
 /* GET home page. */
 router.get("/", function (req, res, next) {
   res.render("index", { title: "Express" });
@@ -65,7 +75,6 @@ router.get("/knex", function (req, res) {
   res.json({ message: "Version Logged successfully" });
 });
 
-// TODO Change format of movie data route
 router.get("/data/:imdbID", function (req, res) {
   const imdbID = req.params.imdbID;
   let movieQuery = req.db
@@ -97,12 +106,10 @@ router.get("/data/:imdbID", function (req, res) {
     .where("basics.tconst", "=", imdbID)
     .then((rows) => {
       if (rows.length === 0) {
-        res
-          .status(404)
-          .json({
-            error: true,
-            message: "No record exists of a movie with this ID",
-          });
+        res.status(404).json({
+          error: true,
+          message: "No record exists of a movie with this ID",
+        });
         return;
       }
       let movie = rows[0];
@@ -116,7 +123,7 @@ router.get("/data/:imdbID", function (req, res) {
           };
         });
         ratingsQuery.where("ratings.tconst", "=", imdbID).then((rows) => {
-          let ratings = rows.map((row) => {;
+          let ratings = rows.map((row) => {
             return {
               source: row.source,
               value: parseFloat(row.value),
