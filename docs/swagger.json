@@ -40,6 +40,138 @@
           }
         }
       },
+      "ProfileFieldsRequired": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Request body incomplete: firstName, lastName, dob and address are required"
+          }
+        }
+      },
+      "ProfileStringsOnly": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Request body invalid: firstName, lastName, dob and address must be strings only"
+          }
+        }
+      },
+      "InvalidDOBFormat": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Invalid input: dob must be a real date in format YYYY-MM-DD"
+          }
+        }
+      },
+      "UserNotFound": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "boolean",
+            "example": "true"
+          },
+          "message": {
+            "type": "string",
+            "example": "User not found"
+          }
+        }
+      },
+      "MalformedAuthHeader": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "boolean",
+            "example": "true"
+          },
+          "message": {
+            "type": "string",
+            "example": "Authorization header is malformed"
+          }
+        }
+      },
+      "UnauthorizedProfile": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "mike@gmail.com"
+          },
+          "firstName": {
+            "type": "string",
+            "example": "Michael"
+          },
+          "lastName": {
+            "type": "string",
+            "example": "Jordan"
+          }
+        }
+      },
+      "AuthorizedProfile": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "mike@gmail.com"
+          },
+          "firstName": {
+            "type": "string",
+            "example": "Michael"
+          },
+          "lastName": {
+            "type": "string",
+            "example": "Jordan"
+          },
+          "dob": {
+            "type": "string",
+            "example": "1963-02-17"
+          },
+          "address": {
+            "type": "string",
+            "example": "123 Fake Street, Springfield"
+          }
+        }
+      },
+      "NewProfile": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "notmike@gmail.com"
+          },
+          "firstName": {
+            "type": "null",
+            "example": "null"
+          },
+          "lastName": {
+            "type": "null",
+            "example": "null"
+          },
+          "dob": {
+            "type": "null",
+            "example": "null"
+          },
+          "address": {
+            "type": "null",
+            "example": "null"
+          }
+        }
+      },
       "TokenExpired": {
         "type": "object",
         "properties": {
@@ -1032,6 +1164,252 @@
                 "schema": {
                   "type": "string",
                   "example": "Too many requests, please try again later."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/{email}/profile": {
+      "get": {
+        "tags": ["Email"],
+        "operationId": "getUserById",
+        "description": "Get information about a person's profile (email, first name, last name etc.) from their email address.",
+        "parameters": [
+          {
+            "name": "email",
+            "in": "path",
+            "description": "The person's email address",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "An object containing data about that user given their email address. Click on 'Schema' below to see the possible responses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/UnauthorizedProfile"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AuthorizedProfile"
+                    },
+                    {
+                      "$ref": "#/components/schemas/NewProfile"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. Click on 'Schema' below to see the possible error responses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/MalformedAuthHeader"
+                    },
+                    {
+                      "$ref": "#/components/schemas/TokenExpired"
+                    },
+                    {
+                      "$ref": "#/components/schemas/InvalidJWT"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested person could not be found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserNotFound"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string",
+                  "example": "Too many requests, please try again later."
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Email"],
+        "operationId": "updateUserProfile",
+        "parameters": [
+          {
+            "name": "email",
+            "in": "path",
+            "description": "Email address of the user",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "description": "Profile object",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "example": "mike@gmail.com"
+                  },
+                  "firstName": {
+                    "type": "string",
+                    "example": "Michael"
+                  },
+                  "lastName": {
+                    "type": "string",
+                    "example": "Jordan"
+                  },
+                  "dob": {
+                    "type": "string",
+                    "example": "1963-02-17"
+                  },
+                  "address": {
+                    "type": "string",
+                    "example": "123 Fake Street, Springfield"
+                  }
+                },
+                "required": ["firstName", "lastName", "dob", "address"]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Profile updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "email": {
+                      "type": "string",
+                      "example": "mike@gmail.com"
+                    },
+                    "firstName": {
+                      "type": "string",
+                      "example": "Michael"
+                    },
+                    "lastName": {
+                      "type": "string",
+                      "example": "Jordan"
+                    },
+                    "dob": {
+                      "type": "string",
+                      "format": "date",
+                      "example": "1963-02-17"
+                    },
+                    "address": {
+                      "type": "string",
+                      "example": "123 Fake Street, Springfield"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Click on 'Schema' below to see the possible error responses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ProfileFieldsRequired"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ProfileStringsOnly"
+                    },
+                    {
+                      "$ref": "#/components/schemas/InvalidDOBFormat"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. Click on 'Schema' below to see the possible error responses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/MissingAuthHeader"
+                    },
+                    {
+                      "$ref": "#/components/schemas/TokenExpired"
+                    },
+                    {
+                      "$ref": "#/components/schemas/InvalidJWT"
+                    },
+                    {
+                      "$ref": "#/components/schemas/MalformedAuthHeader"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserNotFound"
                 }
               }
             }
