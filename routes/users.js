@@ -164,19 +164,17 @@ router.put("/:email/profile", authorization, function (req, res, next) {
 
   // Check if the user is authorized to update the profile
   if (email !== user.email) {
-    res.status(403).json({ error: true, message: "Forbidden" });
-    return;
+    return res.status(403).json({ error: true, message: "Forbidden" });
   }
 
   // Check if the request body contains all required fields
   const { firstName, lastName, dob, address } = req.body;
   if (!firstName || !lastName || !dob || !address) {
-    res.status(400).json({
+    return res.status(400).json({
       error: true,
       message:
         "Request body incomplete: firstName, lastName, dob, and address are required",
     });
-    return;
   }
 
   // Check if all fields are strings
@@ -186,12 +184,11 @@ router.put("/:email/profile", authorization, function (req, res, next) {
     typeof dob !== "string" ||
     typeof address !== "string"
   ) {
-    res.status(400).json({
+    return res.status(400).json({
       error: true,
       message:
         "Request body invalid: firstName, lastName, dob, and address must be strings only",
     });
-    return;
   }
 
   // Check if dob is a valid date in the format YYYY-MM-DD and not in the past
@@ -199,7 +196,6 @@ router.put("/:email/profile", authorization, function (req, res, next) {
     !DateTime.fromISO(dob).isValid ||
     DateTime.fromISO(dob) > DateTime.now()
   ) {
-    console.log("Invalid date of birth");
     return res.status(400).json({
       error: true,
       message: "Invalid input: dob must be a real date in format YYYY-MM-DD",
@@ -207,21 +203,35 @@ router.put("/:email/profile", authorization, function (req, res, next) {
   }
 
   // Update the user's profile information
-  req.db.from("users").where("email", "=", email).update({
-    firstName: firstName,
-    lastName: lastName,
-    dob: dob,
-    address: address,
-  });
-  // TODO: Store user profile information in the database
-  res.status(200).json({
-    email: user.email,
-    firstName: firstName,
-    lastName: lastName,
-    dob: dob,
-    address: address,
-  });
+  req.db
+    .from("users")
+    .where("email", "=", email)
+    .update({
+      firstName: firstName,
+      lastName: lastName,
+      dob: dob,
+      address: address,
+    })
+    .then(() => {
+      // TODO: Store user profile information in the database
+      return res.status(200).json({
+        email: user.email,
+        firstName: firstName,
+        lastName: lastName,
+        dob: dob,
+        address: address,
+      });
+    })
+    .catch((e) => {
+      console.log("Error:", e);
+      return res.status(500).json({ error: true, message: e.message });
+    });
+
+  // Add a return statement here to prevent further execution
+  return;
 });
+
+
 
 router.post("/refresh", function (req, res, next) {
   // Retrieve the refresh token from the req.body
