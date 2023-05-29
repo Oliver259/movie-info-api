@@ -2,6 +2,8 @@ var express = require("express");
 var router = express.Router();
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
+const authorization = require("../middleware/authorization");
+const { DateTime } = require("luxon");
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
 
@@ -27,7 +29,7 @@ router.post("/login", function (req, res, next) {
   }
 
   // Set the default value for bearerExpiresIn
-  const defaultBearerExpiresIn = 600
+  const defaultBearerExpiresIn = 600;
   // Determine if user already exists in table
   const queryUsers = req.db
     .from("users")
@@ -48,8 +50,11 @@ router.post("/login", function (req, res, next) {
         throw new Error("Incorrect email or password");
       }
       // Create bearer and refresh tokens
-      const bearerExp = Math.floor(Date.now() / 1000 + (bearerExpiresIn ? bearerExpiresIn : defaultBearerExpiresIn));
-      const refreshExpiresIn =  60 * 60 * 24; // 24 hours
+      const bearerExp = Math.floor(
+        Date.now() / 1000 +
+          (bearerExpiresIn ? bearerExpiresIn : defaultBearerExpiresIn)
+      );
+      const refreshExpiresIn = 60 * 60 * 24; // 24 hours
       const refreshExp = Math.floor(Date.now() / 1000 + refreshExpiresIn);
       const bearerToken = jwt.sign({ email, exp: bearerExp }, JWT_SECRET);
       const refreshToken = jwt.sign(
@@ -151,6 +156,64 @@ router.post("/logout", function (req, res, next) {
     .catch((e) => {
       res.status(500).json({ error: true, message: e.message });
     });
+});
+
+router.put("/:email/profile", authorization, function (req, res, next) {
+  const email = req.params.email;
+  const user = req.user;
+
+  // Check if the user is authorized to update the profile
+  if (email !== user.email) {
+    res.status(403).json({ error: true, message: "Forbidden" });
+    return;
+  }
+
+  // Check if the request body contains all required fields
+  const { firstName, lastName, dob, address } = req.body;
+  if (!req.body) {
+    res.status(400).json({
+      error: true,
+      message:
+        "Request body incomplete: firstName, lastName, dob, and address are required",
+    });
+    return;
+  }
+
+  // Check if all fields are strings
+  if (
+    typeof firstName !== "string" ||
+    typeof lastName !== "string" ||
+    typeof dob !== "string" ||
+    typeof address !== "string"
+  ) {
+    res.status(400).json({
+      error: true,
+      message:
+        "Request body invalid: firstName, lastName, dob, and address must be strings only",
+    });
+    return;
+  }
+
+  // Check if dob is a valid date in the format YYYY-MM-DD and not in the past
+  if (
+    !DateTime.fromISO(dob).isValid
+  ) {
+    res.status(400).json({
+      error: true,
+      message: "Invalid input: dob must be a real date in format YYYY-MM-DD",
+    });
+    return;
+  }
+
+  // Update the user's profile information
+// TODO: Store user profile information in the database
+  res.status(200).json({
+    email: user.email,
+    firstName: firstName,
+    lastName: lastName,
+    dob: dob,
+    address: address,
+  });
 });
 
 router.post("/refresh", function (req, res, next) {
