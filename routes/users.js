@@ -170,7 +170,7 @@ router.put("/:email/profile", authorization, function (req, res, next) {
 
   // Check if the request body contains all required fields
   const { firstName, lastName, dob, address } = req.body;
-  if (!req.body) {
+  if (!firstName || !lastName || !dob || !address) {
     res.status(400).json({
       error: true,
       message:
@@ -196,17 +196,24 @@ router.put("/:email/profile", authorization, function (req, res, next) {
 
   // Check if dob is a valid date in the format YYYY-MM-DD and not in the past
   if (
-    !DateTime.fromISO(dob).isValid
+    !DateTime.fromISO(dob).isValid ||
+    DateTime.fromISO(dob) > DateTime.now()
   ) {
-    res.status(400).json({
+    console.log("Invalid date of birth");
+    return res.status(400).json({
       error: true,
       message: "Invalid input: dob must be a real date in format YYYY-MM-DD",
     });
-    return;
   }
 
   // Update the user's profile information
-// TODO: Store user profile information in the database
+  req.db.from("users").where("email", "=", email).update({
+    firstName: firstName,
+    lastName: lastName,
+    dob: dob,
+    address: address,
+  });
+  // TODO: Store user profile information in the database
   res.status(200).json({
     email: user.email,
     firstName: firstName,
