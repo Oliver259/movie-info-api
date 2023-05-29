@@ -11,6 +11,13 @@ const knex = require("knex")(options);
 const swaggerUI = require("swagger-ui-express");
 const swaggerDocument = require("./docs/swagger.json");
 
+const swaggerOptions = {
+  customCss: '.swagger-ui .models { display: none }',
+  customOptions: {
+    defaultModelsExpandDepth: -1, // Hide the schemas showing at the bottom of UI
+  },
+};
+
 require("dotenv").config();
 
 // Create Routers
@@ -41,7 +48,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use("/movies", moviesRouter);
 app.use("/user", usersRouter);
 app.use("/people", peopleRouter);
-app.use('/docs', swaggerUI.serve, swaggerUI.setup(swaggerDocument));
+app.use('/docs', swaggerUI.serve, swaggerUI.setup(swaggerDocument, swaggerOptions));
 
 // catch 404 and forward to error handler
 // app.use(function(req, res, next) {
