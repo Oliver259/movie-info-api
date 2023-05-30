@@ -9,7 +9,7 @@ const options = require("./knexfile.js");
 const knex = require("knex")(options);
 
 const swaggerUI = require("swagger-ui-express");
-const swaggerDocument = require("./docs/swagger.json");
+const swaggerDoc = require("./docs/swagger.json");
 
 const swaggerOptions = {
   customCss: '.swagger-ui .models { display: none }',
@@ -48,12 +48,13 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use("/movies", moviesRouter);
 app.use("/user", usersRouter);
 app.use("/people", peopleRouter);
-app.use('/docs', swaggerUI.serve, swaggerUI.setup(swaggerDocument, swaggerOptions));
+app.use('/', swaggerUI.serve);
+app.get('/', swaggerUI.setup(swaggerDoc, swaggerOptions));
 
 // catch 404 and forward to error handler
-// app.use(function(req, res, next) {
-//   next(createError(404));
-// });
+app.use(function(req, res, next) {
+  res.status(404).json({ error: true, message: "Page not found!" })
+});
 
 // error handler
 app.use(function(err, req, res, next) {
