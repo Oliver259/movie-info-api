@@ -10,6 +10,7 @@ module.exports = function (req, res, next) {
     try {
         const verifiedToken = jwt.verify(token, process.env.JWT_SECRET); // Decodes and verifies the token to ensure the authenticity and check the expiration of the token
         req.user = { email: verifiedToken.email }; // Set the user object with the verified email address
+        next();
     } catch (e) {
         if (e.name === "TokenExpiredError") {
             res.status(401).json({ error: true, message: "JWT token has expired" });
@@ -18,6 +19,4 @@ module.exports = function (req, res, next) {
         }
         return;
     }
-
-    next();
 };

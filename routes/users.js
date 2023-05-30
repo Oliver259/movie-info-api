@@ -162,73 +162,91 @@ router.put("/:email/profile", authorization, function (req, res, next) {
   const email = req.params.email;
   const user = req.user;
 
-  // Check if the user is authorized to update the profile
-  if (email !== user.email) {
-    return res.status(403).json({ error: true, message: "Forbidden" });
-  }
-
-  // Check if the request body contains all required fields
-  const { firstName, lastName, dob, address } = req.body;
-  if (!firstName || !lastName || !dob || !address) {
-    return res.status(400).json({
-      error: true,
-      message:
-        "Request body incomplete: firstName, lastName, dob, and address are required",
-    });
-  }
-
-  // Check if all fields are strings
-  if (
-    typeof firstName !== "string" ||
-    typeof lastName !== "string" ||
-    typeof dob !== "string" ||
-    typeof address !== "string"
-  ) {
-    return res.status(400).json({
-      error: true,
-      message:
-        "Request body invalid: firstName, lastName, dob, and address must be strings only",
-    });
-  }
-
-  // Check if dob is a valid date in the format YYYY-MM-DD and not in the past
-  if (
-    !DateTime.fromISO(dob).isValid ||
-    DateTime.fromISO(dob) > DateTime.now()
-  ) {
-    return res.status(400).json({
-      error: true,
-      message: "Invalid input: dob must be a real date in format YYYY-MM-DD",
-    });
-  }
-
-  // Update the user's profile information
+  // Check if the user exists
   req.db
     .from("users")
     .where("email", "=", email)
-    .update({
-      firstName: firstName,
-      lastName: lastName,
-      dob: dob,
-      address: address,
+    .first()
+    .then((existingUser) => {
+      if (!existingUser) {
+        // User not found
+        return res.status(404).json({
+          error: true,
+          message: "User not found",
+        });
+      }
+
+      // Check if the user is authorized to update the profile
+      if (email !== user.email) {
+        return res.status(403).json({ error: true, message: "Forbidden" });
+      }
+
+      // Check if the request body contains all required fields
+      const { firstName, lastName, dob, address } = req.body;
+      if (!firstName || !lastName || !dob || !address) {
+        return res.status(400).json({
+          error: true,
+          message:
+            "Request body incomplete: firstName, lastName, dob, and address are required",
+        });
+      }
+
+      // Check if all fields are strings
+      if (
+        typeof firstName !== "string" ||
+        typeof lastName !== "string" ||
+        typeof dob !== "string" ||
+        typeof address !== "string"
+      ) {
+        return res.status(400).json({
+          error: true,
+          message:
+            "Request body invalid: firstName, lastName, dob, and address must be strings only",
+        });
+      }
+
+      // Check if dob is a valid date in the format YYYY-MM-DD and not in the past
+      if (
+        !DateTime.fromISO(dob).isValid ||
+        DateTime.fromISO(dob) > DateTime.now()
+      ) {
+        return res.status(400).json({
+          error: true,
+          message:
+            "Invalid input: dob must be a real date in format YYYY-MM-DD",
+        });
+      }
+
+      // Update the user's profile information
+      req.db
+        .from("users")
+        .where("email", "=", email)
+        .update({
+          firstName: firstName,
+          lastName: lastName,
+          dob: dob,
+          address: address,
+        })
+        .then(() => {
+          return res.status(200).json({
+            email: user.email,
+            firstName: firstName,
+            lastName: lastName,
+            dob: dob,
+            address: address,
+          });
+        })
+        // Catch any errors when trying to update the user's profile in the database
+        .catch((e) => {
+          console.log("Error:", e);
+          return res.status(500).json({ error: true, message: e.message });
+        });
     })
-    .then(() => {
-      // TODO: Store user profile information in the database
-      return res.status(200).json({
-        email: user.email,
-        firstName: firstName,
-        lastName: lastName,
-        dob: dob,
-        address: address,
-      });
-    })
+    // Catch any errors from user existing check
     .catch((e) => {
       console.log("Error:", e);
       return res.status(500).json({ error: true, message: e.message });
     });
-
-  // Add a return statement here to prevent further execution
-  return;
 });
 
 
