@@ -1259,6 +1259,7 @@
       "put": {
         "tags": ["Email"],
         "operationId": "updateUserProfile",
+        "description": "Update information about a person's profile (email, first name, last name, dob, address) from their email address.",
         "parameters": [
           {
             "name": "email",
