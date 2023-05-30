@@ -84,6 +84,13 @@ router.get("/search", function (req, res) {
 
 router.get("/data/:imdbID", function (req, res) {
   const imdbID = req.params.imdbID;
+
+// Check for invalid query parameters
+if (Object.keys(req.query).length !== 0) {
+  res.status(400).json({ error: true, message: "Query parameters are not permitted." });
+  return;
+}
+
   let movieQuery = req.db
     .from("basics")
     .select(
