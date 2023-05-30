@@ -44,15 +44,20 @@ router.post("/login", function (req, res, next) {
   queryUsers
     .then((users) => {
       if (users.length === 0) {
-        throw new Error("User does not exist");
+        return;
       }
+
       // If user does exist, verify if passwords match
       const user = users[0];
       return bcrypt.compare(password, user.hash);
     })
     .then((match) => {
       if (!match) {
-        throw new Error("Incorrect email or password");
+        res.status(401).json({
+          error: true,
+          message: "Incorrect email or password",
+        });
+        return;
       }
       // Create bearer and refresh tokens
       const bearerExp =
