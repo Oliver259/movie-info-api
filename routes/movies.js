@@ -29,7 +29,16 @@ router.get("/search", function (req, res) {
   }
 
   if (searchYear) {
+    if (!/^\d{4}$/.test(searchYear)) {
+      return res.status(400).json({ error: true, message: "Invalid year format. Format must be yyyy."});} 
     query = query.where("year", "=", searchYear);
+  }
+
+  if (page && isNaN(page)) {
+    return res.status(400).json({
+      error: true,
+      message: "Invalid page format. page must be a number.",
+    });
   }
 
   query
@@ -51,28 +60,14 @@ router.get("/search", function (req, res) {
       const pagination = {
         ...result.pagination,
         currentPage: parseInt(result.pagination.currentPage),
-        nextPage: parseInt(result.pagination.nextPage)
-      }
+        nextPage: parseInt(result.pagination.nextPage),
+      };
       res.json({ data: parsedRows, pagination: pagination });
     })
     .catch((err) => {
       console.log(err);
       res.json({ error: true, message: "Error in MySQL query" });
     });
-});
-
-/* GET home page. */
-router.get("/", function (req, res, next) {
-  res.render("index", { title: "Express" });
-});
-
-router.get("/knex", function (req, res) {
-  req.db
-    .raw("SELECT VERSION()")
-    .then((version) => console.log(version[0]))
-    .catch((err) => console.log(err));
-
-  res.json({ message: "Version Logged successfully" });
 });
 
 router.get("/data/:imdbID", function (req, res) {
