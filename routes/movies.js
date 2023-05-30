@@ -56,12 +56,24 @@ router.get("/search", function (req, res) {
         };
       });
 
-      // Convert currentPage and nextPage to integers
+      // Calculate nextPage value
+      const currentPage = parseInt(result.pagination.currentPage);
+      const nextPage =
+        currentPage < result.pagination.lastPage ? currentPage + 1 : null;
+
+      // Update pagination object with correct nextPage value
       const pagination = {
         ...result.pagination,
-        currentPage: parseInt(result.pagination.currentPage),
-        nextPage: parseInt(result.pagination.nextPage),
+        currentPage: currentPage,
+        nextPage: nextPage,
       };
+
+      // Convert currentPage and nextPage to integers
+      // const pagination = {
+      //   ...result.pagination,
+      //   currentPage: parseInt(result.pagination.currentPage),
+      //   nextPage: parseInt(result.pagination.nextPage),
+      // };
       res.json({ data: parsedRows, pagination: pagination });
     })
     .catch((err) => {
