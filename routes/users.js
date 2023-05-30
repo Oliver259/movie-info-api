@@ -18,6 +18,7 @@ router.post("/login", function (req, res, next) {
   const email = req.body.email;
   const password = req.body.password;
   const bearerExpiresIn = req.body.bearerExpiresInSeconds;
+  const refreshExpiresIn = req.body.refreshExpiresInSeconds;
 
   // Verify body
   if (!email || !password) {
@@ -29,12 +30,17 @@ router.post("/login", function (req, res, next) {
   }
 
   // Set the default value for bearerExpiresIn
-  const defaultBearerExpiresIn = 600;
+  const defaultBearerExpiresIn = 600; // (10 Minutes)
+
+  // Set the default value for refreshExpiresIn
+  const defaultRefreshExpiresIn = 86400; // (24 hours)
+
   // Determine if user already exists in table
   const queryUsers = req.db
     .from("users")
     .select("*")
     .where("email", "=", email);
+
   queryUsers
     .then((users) => {
       if (users.length === 0) {
@@ -44,37 +50,40 @@ router.post("/login", function (req, res, next) {
       const user = users[0];
       return bcrypt.compare(password, user.hash);
     })
-    // If passwords do not match, return error response
     .then((match) => {
       if (!match) {
         throw new Error("Incorrect email or password");
       }
       // Create bearer and refresh tokens
-      const bearerExp = Math.floor(
-        Date.now() / 1000 +
-          (bearerExpiresIn ? bearerExpiresIn : defaultBearerExpiresIn)
-      );
-      const refreshExpiresIn = 60 * 60 * 24; // 24 hours
-      const refreshExp = Math.floor(Date.now() / 1000 + refreshExpiresIn);
+      const bearerExp =
+        Math.floor(Date.now() / 1000) +
+        (bearerExpiresIn || defaultBearerExpiresIn);
+      const refreshExp =
+        Math.floor(Date.now() / 1000) +
+        (refreshExpiresIn || defaultRefreshExpiresIn);
+
       const bearerToken = jwt.sign({ email, exp: bearerExp }, JWT_SECRET);
       const refreshToken = jwt.sign(
         { email, exp: refreshExp },
         JWT_REFRESH_SECRET
       );
-      const expiresIn = bearerExpiresIn || defaultBearerExpiresIn; // Set the bearer tokens expiration time based on input other is set to the default of 600 seconds
+
+      const bearerExpirationTime = bearerExpiresIn || defaultBearerExpiresIn;
+      const refreshExpirationTime = refreshExpiresIn || defaultRefreshExpiresIn;
 
       res.status(200).json({
         bearerToken: {
           token: bearerToken,
           token_type: "Bearer",
-          expires_in: expiresIn,
+          expires_in: bearerExpirationTime,
         },
         refreshToken: {
           token: refreshToken,
           token_type: "Refresh",
-          expires_in: 86400,
+          expires_in: refreshExpirationTime,
         },
       });
+
       // Store refresh token into database
       return queryUsers.update({ refresh_token: refreshToken });
     })
@@ -83,6 +92,7 @@ router.post("/login", function (req, res, next) {
       return;
     });
 });
+
 // 2.1.1 If passwords match, return JWT
 
 // 2.2 If user does not exist, return error response
