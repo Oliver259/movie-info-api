@@ -158,6 +158,52 @@ router.post("/logout", function (req, res, next) {
     });
 });
 
+// TODO: Add error handling for authorization header is malformed
+router.get("/:email/profile", authorization, function (req, res, next) {
+  const email = req.params.email;
+  const user = req.user;
+
+  // Check if the user exists
+  req.db
+    .from("users")
+    .where("email", "=", email)
+    .first()
+    .then((existingUser) => {
+      if (!existingUser) {
+        // User not found
+        return res.status(404).json({
+          error: true,
+          message: "User not found",
+        });
+      }
+
+      // Create the basic profile object for if the user isn't authorized and there isn't a bearer token present
+      const profile = {
+        email: email,
+        firstname: existingUser.firstName,
+        lastName: existingUser.lastName,
+      };
+
+      // Check if the request is authorized and if the token belongs to the user
+      const isAuthorized = email === user.email;
+
+      // Add additional fields to be shown if an authorized request was made
+      if (isAuthorized) {
+        profile.dob = existingUser.dob;
+        profile.address = existingUser.address;
+      }
+
+      // Return 200 (OK) status code
+      return res.status(200).json(profile);
+    })
+    // Catch any errors from user existing check
+    .catch((e) => {
+      console.log("Error:", e);
+      return res.status(500).json({ error: true, message: e.message });
+    });
+});
+
+// TODO: Add error handling for Authorzation header is malformed
 router.put("/:email/profile", authorization, function (req, res, next) {
   const email = req.params.email;
   const user = req.user;
@@ -248,8 +294,6 @@ router.put("/:email/profile", authorization, function (req, res, next) {
       return res.status(500).json({ error: true, message: e.message });
     });
 });
-
-
 
 router.post("/refresh", function (req, res, next) {
   // Retrieve the refresh token from the req.body
