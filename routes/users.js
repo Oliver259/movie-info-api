@@ -243,6 +243,8 @@ router.get("/:email/profile", checkUserExists, authorization, function (req, res
 
       // Add additional fields to be shown if an authorized request was made
       if (isAuthorized) {
+        profile.firstName = existingUser.firstName;
+        profile.lastName = existingUser.lastName;
         profile.dob = existingUser.dob;
         profile.address = existingUser.address;
       }
@@ -370,9 +372,10 @@ router.post("/refresh", function (req, res, next) {
   // Verify the refresh token and generate a new bearer token
   jwt.verify(refreshToken, JWT_REFRESH_SECRET, (error, decoded) => {
     if (error) {
+      const errorMessage = error.name === "TokenExpiredError" ? "JWT token has expired" : "Invalid JWT token";
       res.status(401).json({
         error: true,
-        message: "JWT token has expired",
+        message: errorMessage,
       });
       return;
     }
