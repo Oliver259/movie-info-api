@@ -306,8 +306,16 @@ router.put("/:email/profile", authorization, function (req, res, next) {
             "Request body invalid: firstName, lastName and address must be strings only.",
         });
       }
+      // Check if dob is in the correct format of YYYY-MM-DD
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dob)) {
+        return res.status(400).json({
+          error: true,
+          message:
+            "Invalid input: dob must be a real date in format YYYY-MM-DD.",
+        });
+      }
 
-      // Check if dob is a valid date in the format YYYY-MM-DD and not in the past
+      // Check if dob is a valid date
       if (!DateTime.fromISO(dob).isValid) {
         return res.status(400).json({
           error: true,
