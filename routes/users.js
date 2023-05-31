@@ -213,7 +213,7 @@ function checkUserExists(req, res, next) {
 }
 
 // TODO: Add error handling for authorization header is malformed
-router.get("/:email/profile", checkUserExists, authorization, function (req, res, next) {
+router.get("/:email/profile", checkUserExists, authorization(true), function (req, res, next) {
   const email = req.params.email;
   const user = req.user;
 
@@ -234,12 +234,12 @@ router.get("/:email/profile", checkUserExists, authorization, function (req, res
       // Create the basic profile object for if the user isn't authorized and there isn't a bearer token present
       const profile = {
         email: email,
-        firstname: existingUser.firstName,
+        firstName: existingUser.firstName,
         lastName: existingUser.lastName,
       };
 
       // Check if the request is authorized and if the token belongs to the user
-      const isAuthorized = email === user.email;
+      const isAuthorized = user !== undefined && email === user.email;
 
       // Add additional fields to be shown if an authorized request was made
       if (isAuthorized) {
@@ -260,7 +260,7 @@ router.get("/:email/profile", checkUserExists, authorization, function (req, res
 });
 
 // TODO: Add error handling for Authorzation header is malformed
-router.put("/:email/profile", authorization, function (req, res, next) {
+router.put("/:email/profile", authorization(false), function (req, res, next) {
   const email = req.params.email;
   const user = req.user;
 

@@ -4,7 +4,7 @@ var router = express.Router();
 const authorization = require("../middleware/authorization");
 
 //   TODO Add error handling for invalid parameters
-router.get("/:id", authorization, function (req, res) {
+router.get("/:id", authorization(false), function (req, res) {
   const id = req.params.id;
 
   // Check for invalid query parameters
