@@ -173,8 +173,34 @@ router.post("/logout", function (req, res, next) {
     });
 });
 
+// Create a function to check if the user exists
+function checkUserExists(req, res, next) {
+  const email = req.params.email;
+
+  // Check if the user exists
+  req.db
+    .from("users")
+    .where("email", "=", email)
+    .first()
+    .then((existingUser) => {
+      if (!existingUser) {
+        // User not found
+        return res.status(404).json({
+          error: true,
+          message: "User not found",
+        });
+      }
+      next();
+    })
+    // Catch any errors from checking if the user exists
+    .catch((e) => {
+      console.log("Error:", e);
+      return res.status(500).json({ error: true, message: e.message });
+    });
+}
+
 // TODO: Add error handling for authorization header is malformed
-router.get("/:email/profile", authorization, function (req, res, next) {
+router.get("/:email/profile", checkUserExists, authorization, function (req, res, next) {
   const email = req.params.email;
   const user = req.user;
 
@@ -228,14 +254,7 @@ router.put("/:email/profile", authorization, function (req, res, next) {
     .from("users")
     .where("email", "=", email)
     .first()
-    .then((existingUser) => {
-      if (!existingUser) {
-        // User not found
-        return res.status(404).json({
-          error: true,
-          message: "User not found",
-        });
-      }
+    .then(() => {
 
       // Check if the user is authorized to update the profile
       if (email !== user.email) {
@@ -248,7 +267,7 @@ router.put("/:email/profile", authorization, function (req, res, next) {
         return res.status(400).json({
           error: true,
           message:
-            "Request body incomplete: firstName, lastName, dob, and address are required",
+            "Request body incomplete: firstName, lastName, dob and address are required.",
         });
       }
 
@@ -262,19 +281,24 @@ router.put("/:email/profile", authorization, function (req, res, next) {
         return res.status(400).json({
           error: true,
           message:
-            "Request body invalid: firstName, lastName, dob, and address must be strings only",
+            "Request body invalid: firstName, lastName and address must be strings only.",
         });
       }
 
       // Check if dob is a valid date in the format YYYY-MM-DD and not in the past
-      if (
-        !DateTime.fromISO(dob).isValid ||
-        DateTime.fromISO(dob) > DateTime.now()
-      ) {
+      if (!DateTime.fromISO(dob).isValid) {
         return res.status(400).json({
           error: true,
           message:
-            "Invalid input: dob must be a real date in format YYYY-MM-DD",
+            "Invalid input: dob must be a real date in format YYYY-MM-DD.",
+        });
+      }
+
+      // Check if dob is not in the past
+      if (DateTime.fromISO(dob) > DateTime.now()) {
+        return res.status(400).json({
+          error: true,
+          message: "Invalid input: dob must be a date in the past.",
         });
       }
 
