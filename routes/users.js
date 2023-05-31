@@ -153,6 +153,19 @@ router.post("/logout", function (req, res, next) {
     return;
   }
 
+  // Verify if the refresh token is valid
+  const validRefreshToken = jwt.decode(refreshToken);
+  if (!validRefreshToken) {
+    res.status(401).json({ error: true, message: "Invalid JWT token" });
+    return;
+  }
+
+  // Verify if the refresh token is expired
+  if (validRefreshToken.exp < Date.now() / 1000) {
+    res.status(401).json({ error: true, message: "JWT token has expired" });
+    return;
+  }
+
   // Delete the refresh token from the database
   req.db
     .from("users")
@@ -160,7 +173,7 @@ router.post("/logout", function (req, res, next) {
     .update({ refresh_token: "" }) // Set the refresh token to an empty string
     .then((numUpdated) => {
       if (numUpdated === 0) {
-        res.status(401).json({ error: true, message: "JWT token has expired" });
+        res.status(401).json({ error: true, message: "Invalid JWT token" });
       } else {
         res.status(200).json({
           error: false,
@@ -254,7 +267,14 @@ router.put("/:email/profile", authorization, function (req, res, next) {
     .from("users")
     .where("email", "=", email)
     .first()
-    .then(() => {
+    .then((existingUser) => {
+      if (!existingUser) {
+        // User not found
+        return res.status(404).json({
+          error: true,
+          message: "User not found",
+        });
+      }
 
       // Check if the user is authorized to update the profile
       if (email !== user.email) {
