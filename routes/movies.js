@@ -1,12 +1,12 @@
+// Import necessary modules
 var express = require("express");
 var router = express.Router();
 
-const authorization = require("../middleware/authorization");
-
+// Add knex pagination
 const { attachPaginate } = require("knex-paginate");
 attachPaginate();
 
-//   TODO Add error handling for invalid parameters
+// Get movies based on the inputted search otherwise get all movies
 router.get("/search", function (req, res) {
   const searchTitle = req.query.title;
   const searchYear = req.query.year;
@@ -24,16 +24,25 @@ router.get("/search", function (req, res) {
       "rated AS classification"
     );
 
+  // If there is a title inputted then search for that movies contiaining the given input
   if (searchTitle) {
     query = query.where("primaryTitle", "like", `%${searchTitle}%`);
   }
 
+  // If a year is inputted then search for movies containing that given year
   if (searchYear) {
     if (!/^\d{4}$/.test(searchYear)) {
-      return res.status(400).json({ error: true, message: "Invalid year format. Format must be yyyy."});} 
+      return res
+        .status(400)
+        .json({
+          error: true,
+          message: "Invalid year format. Format must be yyyy.",
+        });
+    }
     query = query.where("year", "=", searchYear);
   }
 
+  // If invalid page format is entered then an error message is returned
   if (page && isNaN(page)) {
     return res.status(400).json({
       error: true,
@@ -41,6 +50,7 @@ router.get("/search", function (req, res) {
     });
   }
 
+  // Query the database
   query
     .paginate({ perPage: 100, currentPage: page, isLengthAware: true })
     .then((result) => {
@@ -68,12 +78,6 @@ router.get("/search", function (req, res) {
         nextPage: nextPage,
       };
 
-      // Convert currentPage and nextPage to integers
-      // const pagination = {
-      //   ...result.pagination,
-      //   currentPage: parseInt(result.pagination.currentPage),
-      //   nextPage: parseInt(result.pagination.nextPage),
-      // };
       res.json({ data: parsedRows, pagination: pagination });
     })
     .catch((err) => {
@@ -82,15 +86,19 @@ router.get("/search", function (req, res) {
     });
 });
 
+// Get data for an individual movie given a valid imdbID
 router.get("/data/:imdbID", function (req, res) {
   const imdbID = req.params.imdbID;
 
-// Check for invalid query parameters
-if (Object.keys(req.query).length !== 0) {
-  res.status(400).json({ error: true, message: "Query parameters are not permitted." });
-  return;
-}
+  // Check for invalid query parameters
+  if (Object.keys(req.query).length !== 0) {
+    res
+      .status(400)
+      .json({ error: true, message: "Query parameters are not permitted." });
+    return;
+  }
 
+  // Movie query
   let movieQuery = req.db
     .from("basics")
     .select(
@@ -103,6 +111,7 @@ if (Object.keys(req.query).length !== 0) {
       "basics.plot",
       "basics.boxoffice"
     );
+  // Query the database regarding the people involved in a given movie's imdbID
   let principalsQuery = req.db
     .from("principals")
     .select(
@@ -112,10 +121,12 @@ if (Object.keys(req.query).length !== 0) {
       "principals.name",
       "principals.characters"
     );
+  // Ratings query
   let ratingsQuery = req.db
     .from("ratings")
     .select("ratings.source", "ratings.value");
 
+  // Run movie query given an imdbID, if no record of a movie with the ID exists then return an error message
   movieQuery
     .where("basics.tconst", "=", imdbID)
     .then((rows) => {
@@ -127,6 +138,8 @@ if (Object.keys(req.query).length !== 0) {
         return;
       }
       let movie = rows[0];
+
+      // Run the principals query
       principalsQuery.where("principals.tconst", "=", imdbID).then((rows) => {
         let principals = rows.map((row) => {
           return {
@@ -136,6 +149,8 @@ if (Object.keys(req.query).length !== 0) {
             characters: row.characters == "" ? [] : JSON.parse(row.characters),
           };
         });
+
+        // Run the ratings query
         ratingsQuery.where("ratings.tconst", "=", imdbID).then((rows) => {
           let ratings = rows.map((row) => {
             return {
@@ -144,6 +159,7 @@ if (Object.keys(req.query).length !== 0) {
             };
           });
 
+          // Retyrb the movie data
           res.json({
             title: movie.title,
             year: movie.year,
@@ -159,6 +175,7 @@ if (Object.keys(req.query).length !== 0) {
         });
       });
     })
+    // Return unknown errors
     .catch((err) => {
       console.log(err);
       res.json({ error: true, message: "Error in MySQL query" });

@@ -1,9 +1,9 @@
+// Import necessary modules
 var express = require("express");
+const authorization = require("../middleware/authorization");
 var router = express.Router();
 
-const authorization = require("../middleware/authorization");
-
-//   TODO Add error handling for invalid parameters
+// Get data about a person from their imdbID
 router.get("/:id", authorization(false), function (req, res) {
   const id = req.params.id;
 
@@ -34,6 +34,7 @@ router.get("/:id", authorization(false), function (req, res) {
     )
     .where("principals.nconst", "=", id);
 
+  // Query the person's data and roles at the same time to improve speed
   Promise.all([personQuery, rolesQuery])
     .then(([personRows, roleRows]) => {
       if (personRows.length === 0) {
@@ -64,5 +65,5 @@ router.get("/:id", authorization(false), function (req, res) {
       console.log(err);
       res.json({ error: true, message: "Error in MySQL query" });
     });
-})
+});
 module.exports = router;
