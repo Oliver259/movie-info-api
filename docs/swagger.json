@@ -92,19 +92,6 @@
           }
         }
       },
-      "MalformedAuthHeader": {
-        "type": "object",
-        "properties": {
-          "error": {
-            "type": "boolean",
-            "example": "true"
-          },
-          "message": {
-            "type": "string",
-            "example": "Authorization header is malformed"
-          }
-        }
-      },
       "UnauthorizedProfile": {
         "type": "object",
         "properties": {
@@ -1220,9 +1207,6 @@
                 "schema": {
                   "oneOf": [
                     {
-                      "$ref": "#/components/schemas/MalformedAuthHeader"
-                    },
-                    {
                       "$ref": "#/components/schemas/TokenExpired"
                     },
                     {
@@ -1376,9 +1360,6 @@
                     },
                     {
                       "$ref": "#/components/schemas/InvalidJWT"
-                    },
-                    {
-                      "$ref": "#/components/schemas/MalformedAuthHeader"
                     }
                   ]
                 }
